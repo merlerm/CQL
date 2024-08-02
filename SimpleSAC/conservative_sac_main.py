@@ -6,7 +6,8 @@ import uuid
 import numpy as np
 import pprint
 
-import gym
+# import gym
+import gymnasium as gym
 import torch
 import d4rl
 
@@ -14,7 +15,7 @@ import absl.app
 import absl.flags
 
 from .conservative_sac import ConservativeSAC
-from .replay_buffer import batch_to_torch, get_d4rl_dataset, subsample_batch
+from .replay_buffer import batch_to_torch, get_d4rl_dataset, subsample_batch, get_custom_dataset
 from .model import TanhGaussianPolicy, FullyConnectedQFunction, SamplerPolicy
 from .sampler import StepSampler, TrajSampler
 from .utils import Timer, define_flags_with_default, set_random_seed, print_flags, get_user_flags, prefix_metrics
@@ -28,7 +29,7 @@ FLAGS_DEF = define_flags_with_default(
     seed=42,
     device='cuda',
     save_model=False,
-    batch_size=256,
+    batch_size=10,
 
     reward_scale=1.0,
     reward_bias=0.0,
@@ -40,9 +41,9 @@ FLAGS_DEF = define_flags_with_default(
     policy_log_std_multiplier=1.0,
     policy_log_std_offset=-1.0,
 
-    n_epochs=2000,
+    n_epochs=1000,
     bc_epochs=0,
-    n_train_step_per_epoch=1000,
+    n_train_step_per_epoch=100,
     eval_period=10,
     eval_n_trajs=5,
 
@@ -67,7 +68,8 @@ def main(argv):
     set_random_seed(FLAGS.seed)
 
     eval_sampler = TrajSampler(gym.make(FLAGS.env).unwrapped, FLAGS.max_traj_length)
-    dataset = get_d4rl_dataset(eval_sampler.env)
+    # dataset = get_d4rl_dataset(eval_sampler.env)
+    dataset = get_custom_dataset(FLAGS.env)
     dataset['rewards'] = dataset['rewards'] * FLAGS.reward_scale + FLAGS.reward_bias
     dataset['actions'] = np.clip(dataset['actions'], -FLAGS.clip_action, FLAGS.clip_action)
 
@@ -122,9 +124,9 @@ def main(argv):
 
                 metrics['average_return'] = np.mean([np.sum(t['rewards']) for t in trajs])
                 metrics['average_traj_length'] = np.mean([len(t['rewards']) for t in trajs])
-                metrics['average_normalizd_return'] = np.mean(
-                    [eval_sampler.env.get_normalized_score(np.sum(t['rewards'])) for t in trajs]
-                )
+                # metrics['average_normalizd_return'] = np.mean(
+                #     [eval_sampler.env.get_normalized_score(np.sum(t['rewards'])) for t in trajs]
+                # )
                 if FLAGS.save_model:
                     save_data = {'sac': sac, 'variant': variant, 'epoch': epoch}
                     wandb_logger.save_pickle(save_data, 'model.pkl')

@@ -68,13 +68,14 @@ class TrajSampler(object):
             next_observations = []
             dones = []
 
-            observation = self.env.reset()
+            observation, _ = self.env.reset()
 
             for _ in range(self.max_traj_length):
                 action = policy(
                     np.expand_dims(observation, 0), deterministic=deterministic
                 )[0, :]
-                next_observation, reward, done, _ = self.env.step(action)
+                next_observation, reward, terminted, truncated, _ = self.env.step(action)
+                done = terminted or truncated
                 observations.append(observation)
                 actions.append(action)
                 rewards.append(reward)
